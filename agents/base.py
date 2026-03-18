@@ -250,12 +250,13 @@ supabase.update_profile
         try:
             response = await self.client.messages.create(
                 model=model,
-                max_tokens=600,
+                max_tokens=1024,
                 system=self.system_prompt,
                 messages=[{"role": "user", "content": planning_prompt}],
             )
 
             plan_text = response.content[0].text
+            self._logger.debug("raw_plan_text", text=plan_text[:500])
 
             # Parse JSON plan — handle markdown fences and stray text
             import re as _re
@@ -266,12 +267,26 @@ supabase.update_profile
             try:
                 plan_data = json.loads(text)
             except json.JSONDecodeError:
-                # Try to extract a JSON array from anywhere in the response
-                json_match = _re.search(r'\[.*?\]', text, _re.DOTALL)
+                # Greedy match — find outermost [...] array in the response
+                json_match = _re.search(r'\[.*\]', text, _re.DOTALL)
                 if json_match:
-                    plan_data = json.loads(json_match.group())
+                    try:
+                        plan_data = json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        plan_data = None
                 else:
-                    raise ValueError("Could not parse plan as JSON")
+                    plan_data = None
+
+            # Fallback: wrap response as a single analysis step so execution doesn't crash
+            if not plan_data:
+                self._logger.warning("plan_json_parse_failed", raw=plan_text[:200])
+                plan_data = [{
+                    "step_number": 1,
+                    "action": "respond",
+                    "tool": None,
+                    "parameters": {},
+                    "description": plan_text[:300],
+                }]
 
             # Validate and convert to PlanStep objects
             steps = []
