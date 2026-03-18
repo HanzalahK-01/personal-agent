@@ -89,7 +89,8 @@ async def add_task(
     payload: dict = {
         "content": content,
         "priority": _PRIORITY_REVERSE.get(priority, 2),
-        "duration": {"amount": duration, "unit": duration_unit},
+        "duration": duration,
+        "duration_unit": duration_unit,
     }
     if due_string:
         payload["due_string"] = due_string
