@@ -82,15 +82,13 @@ async def add_task(
     due_string: Optional[str] = None,
     labels: Optional[list[str]] = None,
     description: Optional[str] = None,
-    duration: int = 30,
+    duration: Optional[int] = None,
     duration_unit: str = "minute",
 ) -> dict:
-    """Add a new task and return the created task. Duration defaults to 30 minutes."""
+    """Add a new task and return the created task."""
     payload: dict = {
         "content": content,
         "priority": _PRIORITY_REVERSE.get(priority, 2),
-        "duration": duration,
-        "duration_unit": duration_unit,
     }
     if due_string:
         payload["due_string"] = due_string
@@ -99,18 +97,27 @@ async def add_task(
     if description:
         payload["description"] = description
 
-    # Duration requires due_datetime (not due_string) — convert if we have date+time
-    if "duration" in payload and "due_string" in payload:
+    # Duration requires due_datetime — only include it when we have a due date
+    if duration and due_string:
         due_str = payload.pop("due_string")
-        # Parse "YYYY-MM-DD HH:MM" → ISO datetime
+        # Try to parse "YYYY-MM-DD HH:MM" → ISO datetime (required for duration)
         try:
             from datetime import datetime as dt
-            parsed = dt.strptime(due_str, "%Y-%m-%d %H:%M")
-            payload["due_datetime"] = parsed.strftime("%Y-%m-%dT%H:%M:%S")
-        except ValueError:
-            payload["due_string"] = due_str  # fallback — keep as string, drop duration
-            payload.pop("duration", None)
-            payload.pop("duration_unit", None)
+            # Accept HH:MM or HH:MM:SS
+            for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+                try:
+                    parsed = dt.strptime(due_str, fmt)
+                    payload["due_datetime"] = parsed.strftime("%Y-%m-%dT%H:%M:%S")
+                    payload["duration"] = duration
+                    payload["duration_unit"] = duration_unit
+                    break
+                except ValueError:
+                    continue
+            else:
+                # Date-only string — keep as due_string, skip duration
+                payload["due_string"] = due_str
+        except Exception:
+            payload["due_string"] = due_str
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -184,8 +191,10 @@ async def update_task(task_id: str, **updates) -> dict:
 
 async def find_task_by_name(name: str) -> Optional[dict]:
     """Find the first task whose content fuzzy-matches `name`."""
+    name_lower = name.lower().strip() if name else ""
+    if not name_lower:
+        return None
     tasks = await get_tasks()
-    name_lower = name.lower().strip()
     for t in tasks:
         if t["content"].lower().strip() == name_lower:
             return t

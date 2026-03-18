@@ -534,13 +534,26 @@ async def _call_todoist(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
                 due_string = f"{due_date} {due_time}"
             elif due_date:
                 due_string = due_date
+        # Safely coerce duration — agent sometimes sends None or a string
+        raw_duration = params.get("duration")
+        try:
+            duration = int(raw_duration) if raw_duration is not None else (30 if due_string else None)
+        except (ValueError, TypeError):
+            duration = 30 if due_string else None
+
+        # Coerce priority — agent sometimes sends integer (Todoist native) instead of string
+        raw_priority = params.get("priority", "medium")
+        _int_to_str = {4: "high", 3: "high", 2: "medium", 1: "low"}
+        if isinstance(raw_priority, int):
+            raw_priority = _int_to_str.get(raw_priority, "medium")
+
         task = await add_task(
             content=content,
-            priority=params.get("priority", "medium"),
+            priority=raw_priority,
             due_string=due_string,
             labels=params.get("labels"),
             description=params.get("description"),
-            duration=int(params.get("duration", 30)),
+            duration=duration,
             duration_unit=params.get("duration_unit", "minute"),
         )
         return {"task": task}
@@ -605,7 +618,9 @@ async def _do_update_task(params: Dict[str, Any]) -> Dict[str, Any]:
         updates["content"] = content
 
     if params.get("priority"):
-        updates["priority"] = params["priority"]
+        raw_p = params["priority"]
+        _int_to_str = {4: "high", 3: "high", 2: "medium", 1: "low"}
+        updates["priority"] = _int_to_str.get(raw_p, raw_p) if isinstance(raw_p, int) else raw_p
 
     # Build due_string from separate fields if needed
     due_string = params.get("due_string") or params.get("due")
@@ -616,6 +631,25 @@ async def _do_update_task(params: Dict[str, Any]) -> Dict[str, Any]:
             due_string = f"{due_date} {due_time}"
         elif due_date:
             due_string = due_date
+
+    # If duration + a datetime string → convert to due_datetime (update API requires this)
+    raw_duration = params.get("duration")
+    if raw_duration and due_string:
+        try:
+            from datetime import datetime as _dt
+            for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+                try:
+                    parsed = _dt.strptime(due_string, fmt)
+                    updates["due_datetime"] = parsed.strftime("%Y-%m-%dT%H:%M:%S")
+                    updates["duration"] = int(raw_duration)
+                    updates["duration_unit"] = params.get("duration_unit", "minute")
+                    due_string = None  # don't also add due_string
+                    break
+                except ValueError:
+                    continue
+        except Exception:
+            pass
+
     if due_string:
         updates["due_string"] = due_string
 
