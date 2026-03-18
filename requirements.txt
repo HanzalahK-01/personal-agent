@@ -10,7 +10,7 @@ google-api-python-client==2.125.0
 python-telegram-bot==21.3
 anthropic>=0.50.0
 langgraph==0.2.75
-aioredis==2.0.1
+redis==5.0.1
 structlog==24.1.0
 pydantic==2.9.1
 pydantic-settings==2.3.4

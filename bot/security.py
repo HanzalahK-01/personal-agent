@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from functools import wraps
 
-import aioredis
+import redis.asyncio as aioredis
 from config.settings import settings
 
 logger = structlog.get_logger(__name__)
