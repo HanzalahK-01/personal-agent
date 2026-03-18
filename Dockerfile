@@ -15,4 +15,4 @@ RUN mkdir -p data
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-CMD ["python", "-m", "bot"]
+CMD ["python", "__main__.py"]
