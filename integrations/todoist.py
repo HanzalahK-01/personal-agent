@@ -110,6 +110,7 @@ async def add_task(
         except ValueError:
             payload["due_string"] = due_str  # fallback — keep as string, drop duration
             payload.pop("duration", None)
+            payload.pop("duration_unit", None)
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
