@@ -98,6 +98,18 @@ async def add_task(
     if description:
         payload["description"] = description
 
+    # Duration requires due_datetime (not due_string) — convert if we have date+time
+    if "duration" in payload and "due_string" in payload:
+        due_str = payload.pop("due_string")
+        # Parse "YYYY-MM-DD HH:MM" → ISO datetime
+        try:
+            from datetime import datetime as dt
+            parsed = dt.strptime(due_str, "%Y-%m-%d %H:%M")
+            payload["due_datetime"] = parsed.strftime("%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            payload["due_string"] = due_str  # fallback — keep as string, drop duration
+            payload.pop("duration", None)
+
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{BASE_URL}/tasks",
