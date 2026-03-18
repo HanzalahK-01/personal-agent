@@ -105,6 +105,8 @@ async def add_task(
             json=payload,
             timeout=15,
         )
+        if resp.status_code >= 400:
+            logger.error("todoist_add_task_failed", status=resp.status_code, body=resp.text, payload=payload)
         resp.raise_for_status()
 
     task = _map_task(resp.json())
