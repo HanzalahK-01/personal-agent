@@ -24,6 +24,7 @@ client = AsyncAnthropic(api_key=settings.anthropic.api_key)
 # Module-level singletons — created once, reused across requests
 _mcp_client: Optional[MCPClient] = None
 _memory_store = None  # Optional[MemoryStore] — None if DATABASE_URL not set
+_memory_store_failed = False  # True after first failed init — stops retrying
 
 
 def _get_mcp_client() -> MCPClient:
@@ -35,9 +36,11 @@ def _get_mcp_client() -> MCPClient:
 
 async def _get_memory_store():
     """Return the MemoryStore singleton, or None if DATABASE_URL is not configured."""
-    global _memory_store
+    global _memory_store, _memory_store_failed
     if _memory_store is not None:
         return _memory_store
+    if _memory_store_failed:
+        return None  # don't retry after first failure
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -51,6 +54,7 @@ async def _get_memory_store():
         logger.info("memory_store_connected")
         return _memory_store
     except Exception as e:
+        _memory_store_failed = True
         logger.warning("memory_store_unavailable", error=str(e))
         return None
 

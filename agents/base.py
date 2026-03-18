@@ -130,7 +130,7 @@ class BaseAgent(ABC):
         # Build compact context — skip heavy fields to save tokens
         compact_context = {
             k: v for k, v in context.items()
-            if k not in ("conversation_history", "memory", "approved_plan")
+            if k not in ("conversation_history", "memory", "approved_plan", "user_profile")
         }
         context_str = json.dumps(compact_context, indent=2, default=str)[:2000]
 
@@ -257,13 +257,17 @@ supabase.update_profile
 
             plan_text = response.content[0].text
 
-            # Parse JSON plan
+            # Parse JSON plan — handle markdown fences and stray text
+            import re as _re
+            text = plan_text.strip()
+            # Strip ```json ... ``` or ``` ... ``` fences
+            text = _re.sub(r'^```(?:json)?\s*', '', text)
+            text = _re.sub(r'\s*```$', '', text.strip())
             try:
-                plan_data = json.loads(plan_text)
+                plan_data = json.loads(text)
             except json.JSONDecodeError:
-                # Try to extract JSON from the response
-                import re
-                json_match = re.search(r'\[.*\]', plan_text, re.DOTALL)
+                # Try to extract a JSON array from anywhere in the response
+                json_match = _re.search(r'\[.*?\]', text, _re.DOTALL)
                 if json_match:
                     plan_data = json.loads(json_match.group())
                 else:
