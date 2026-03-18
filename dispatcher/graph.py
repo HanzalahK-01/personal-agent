@@ -67,6 +67,7 @@ class DispatcherState(TypedDict):
     approval_status: str  # pending_approval, approved, rejected, completed
     result: str
     memory_context: str
+    user_profile: str  # JSON-encoded profile from Supabase
     todoist_context: str
     calendar_context: str
     conversation_history: list[dict]
@@ -119,6 +120,14 @@ async def classify_intent_node(state: DispatcherState) -> DispatcherState:
             state["memory_context"] = json.dumps(ctx, default=str)
     except Exception as e:
         logger.warning("memory_context_load_failed", error=str(e))
+
+    # Load user profile from Supabase (non-blocking — skipped if not configured)
+    try:
+        from integrations.supabase_profile import get_profile
+        profile = await get_profile(state["user_id"])
+        state["user_profile"] = json.dumps(profile, default=str) if profile else ""
+    except Exception as e:
+        logger.warning("user_profile_load_failed", error=str(e))
 
     try:
         intent, confidence = await classify_intent(
@@ -319,7 +328,9 @@ async def execute_plan_node(state: DispatcherState, progress_callback=None) -> D
         if state["intent"] == "general_chat":
             model = _select_model(state["intent"], state["message"])
             system = AGENT_SYSTEMS["general_chat"]
-            extra = "\n\n".join(filter(None, [todoist_context, calendar_context]))
+            profile_str = state.get("user_profile", "")
+            extra_parts = [p for p in [profile_str, todoist_context, calendar_context] if p]
+            extra = "\n\n".join(extra_parts)
             if extra:
                 system = system + "\n\n" + extra
             response = await client.messages.create(
@@ -343,6 +354,7 @@ async def execute_plan_node(state: DispatcherState, progress_callback=None) -> D
             "approved_plan": state["plan"],
             "conversation_history": state.get("conversation_history", []),
             "memory": state.get("memory_context", ""),
+            "user_profile": state.get("user_profile", ""),
             "todoist_context": todoist_context,
             "calendar_context": calendar_context,
         }
@@ -527,6 +539,7 @@ async def dispatch_message(
             "approval_status": "pending",
             "result": "",
             "memory_context": "",
+            "user_profile": "",
             "todoist_context": "",
             "calendar_context": "",
             "conversation_history": conversation_history or [],

@@ -134,6 +134,18 @@ class BaseAgent(ABC):
         }
         context_str = json.dumps(compact_context, indent=2, default=str)[:2000]
 
+        # Inject user profile as a concise header if available
+        user_profile_hint = ""
+        raw_profile = context.get("user_profile", "")
+        if raw_profile:
+            try:
+                import json as _json
+                profile = _json.loads(raw_profile)
+                from integrations.supabase_profile import format_profile_for_context
+                user_profile_hint = "\n" + format_profile_for_context(profile)
+            except Exception:
+                pass
+
         # Inject dispatcher's approved plan as a hint so we don't start from scratch
         approved_plan = context.get("approved_plan", [])
         approved_hint = ""
@@ -144,7 +156,7 @@ class BaseAgent(ABC):
 
         planning_prompt = f"""
 You are an AI agent tasked with planning how to help the user.
-
+{user_profile_hint}
 CAPABILITIES: You can use these tools and methods:
 {chr(10).join(f"- {cap}" for cap in self.capabilities)}
 
@@ -220,6 +232,13 @@ gmail.read_thread
 
 gmail.create_draft
   params: to (str), subject (str), body (str)
+
+supabase.get_profile
+  params: (none) — returns the user's stored profile (name, timezone, notes, preferences)
+
+supabase.update_profile
+  params: one or more of: name (str), timezone (str), notes (str), preferences (dict)
+  — use this to save things the user tells you about themselves (preferences, habits, facts)
 """
 
         self._logger.info(
@@ -313,6 +332,7 @@ gmail.create_draft
                             step.tool,
                             step.parameters,
                             mcp_client,
+                            context=context,
                         )
 
                         # Store result for later steps
@@ -442,6 +462,7 @@ Generate a brief, friendly summary (2-3 sentences) of what was accomplished and 
         tool_name: str,
         parameters: Dict[str, Any],
         mcp_client: Any,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Execute a tool call, routing to direct integrations or MCP as appropriate.
@@ -461,6 +482,9 @@ Generate a brief, friendly summary (2-3 sentences) of what was accomplished and 
                 result = await _call_gcal(method, parameters)
             elif service == "tavily":
                 result = await _call_tavily(method, parameters)
+            elif service == "supabase":
+                user_id = (context or {}).get("user_id")
+                result = await _call_supabase(method, parameters, user_id)
             elif service == "assistant":
                 result = await _call_assistant(method, parameters)
             else:
@@ -631,6 +655,21 @@ async def _call_tavily(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         results = await search_news(params.get("query", ""), max_results=params.get("max_results", 5))
         return {"results": results}
     raise ValueError(f"Unknown tavily method: {method}")
+
+
+async def _call_supabase(method: str, params: Dict[str, Any], user_id: Optional[int]) -> Dict[str, Any]:
+    from integrations.supabase_profile import get_profile, upsert_profile
+    if not user_id:
+        return {"error": "user_id not available for supabase call"}
+    if method == "get_profile":
+        profile = await get_profile(user_id)
+        return {"profile": profile}
+    if method == "update_profile":
+        # Accept any kwargs as profile fields to update
+        update_data = {k: v for k, v in params.items()}
+        profile = await upsert_profile(user_id, update_data)
+        return {"profile": profile}
+    raise ValueError(f"Unknown supabase method: {method}")
 
 
 async def _call_assistant(method: str, params: Dict[str, Any]) -> Dict[str, Any]:

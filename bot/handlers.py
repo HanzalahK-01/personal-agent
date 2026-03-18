@@ -50,7 +50,8 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/done <task> — Mark a task complete\n"
         "/remove <task> — Delete a task\n"
         "/rejig — Reorganise the rest of your day\n"
-        "/status — Check today's progress"
+        "/status — Check today's progress\n"
+        "/profile — View or update your profile (name, timezone, notes)"
     )
 
     try:
@@ -525,6 +526,59 @@ async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         f"📌 Backlog: {pending} tasks"
     )
     await context.bot.send_message(chat_id=user_id, text=msg, parse_mode="Markdown")
+
+
+async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """/profile [key=value ...] — view or update your stored profile."""
+    user_id = update.effective_user.id
+    args = context.args or []
+
+    from integrations.supabase_profile import get_profile, upsert_profile, format_profile_for_context
+
+    # No args → show current profile
+    if not args:
+        profile = await get_profile(user_id)
+        if not profile:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "No profile saved yet. Set details with:\n"
+                    "`/profile name=Your Name timezone=Europe/London`\n"
+                    "or add notes like:\n"
+                    "`/profile notes=I prefer concise responses`"
+                ),
+                parse_mode="Markdown",
+            )
+            return
+        text = format_profile_for_context(profile) or "Profile is empty."
+        await context.bot.send_message(chat_id=user_id, text=f"```\n{text}\n```", parse_mode="Markdown")
+        return
+
+    # Parse key=value pairs — anything not matching goes into notes
+    data = {}
+    notes_parts = []
+    for arg in args:
+        if "=" in arg:
+            k, _, v = arg.partition("=")
+            data[k.strip()] = v.strip()
+        else:
+            notes_parts.append(arg)
+    if notes_parts:
+        data["notes"] = " ".join(notes_parts)
+
+    if not data:
+        await context.bot.send_message(chat_id=user_id, text="Nothing to update.")
+        return
+
+    try:
+        await upsert_profile(user_id, data)
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"Profile updated: {', '.join(f'{k}={v}' for k, v in data.items())}",
+        )
+    except Exception as e:
+        logger.error("handle_profile_error", user_id=user_id, error=str(e))
+        await context.bot.send_message(chat_id=user_id, text="Failed to update profile. Check Supabase config.")
 
 
 def _format_plan_message(plan: list[str]) -> str:

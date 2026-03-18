@@ -87,6 +87,14 @@ class PlannerConfig:
 
 
 @dataclass
+class SupabaseConfig:
+    """Supabase project configuration (used for user profile REST API)."""
+
+    url: str = field(default_factory=lambda: os.getenv("SUPABASE_URL", ""))
+    anon_key: str = field(default_factory=lambda: os.getenv("SUPABASE_ANON_KEY", ""))
+
+
+@dataclass
 class SecurityConfig:
     """Security configuration."""
 
@@ -113,6 +121,7 @@ class Settings:
     tavily: TavilyConfig = field(default_factory=TavilyConfig)
     canva: CanvaConfig = field(default_factory=CanvaConfig)
     google: GoogleConfig = field(default_factory=GoogleConfig)
+    supabase: SupabaseConfig = field(default_factory=SupabaseConfig)
     planner: PlannerConfig = field(default_factory=PlannerConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
 

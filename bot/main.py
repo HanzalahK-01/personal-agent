@@ -28,6 +28,7 @@ from bot.handlers import (
     handle_remove,
     handle_rejig,
     handle_status,
+    handle_profile,
 )
 from bot.security import UserAuth, RateLimiter, InputSanitizer, security_check
 
@@ -125,6 +126,7 @@ class TelegramBotApp:
         self.application.add_handler(CommandHandler("remove", handle_remove))
         self.application.add_handler(CommandHandler("rejig", handle_rejig))
         self.application.add_handler(CommandHandler("status", handle_status))
+        self.application.add_handler(CommandHandler("profile", handle_profile))
 
         # Message handler (must come before callback to avoid conflicts)
         self.application.add_handler(
