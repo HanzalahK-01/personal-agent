@@ -14,14 +14,17 @@ logger = structlog.get_logger(__name__)
 # Initialize Anthropic client
 client = AsyncAnthropic(api_key=settings.anthropic.api_key)
 
-# Intents that are simple enough for Haiku when the message is short
-_SIMPLE_INTENTS = {"general_chat", "shopping", "routine"}
-_SHORT_MESSAGE_THRESHOLD = 50  # characters
+# Intents that are simple enough for Haiku
+_SIMPLE_INTENTS = {"general_chat", "shopping", "routine", "relationship"}
+_COMPLEX_INTENTS = {"concierge", "email", "scheduling"}
+_SHORT_MESSAGE_THRESHOLD = 150  # characters
 
 
 def _select_model(intent: str, message: str) -> str:
     """Pick the cheapest model that can handle the request."""
-    if intent in _SIMPLE_INTENTS and len(message) <= _SHORT_MESSAGE_THRESHOLD:
+    if intent in _COMPLEX_INTENTS:
+        return "claude-sonnet-4-6"
+    if intent in _SIMPLE_INTENTS or len(message) <= _SHORT_MESSAGE_THRESHOLD:
         return "claude-haiku-4-5-20251001"
     return "claude-sonnet-4-6"
 

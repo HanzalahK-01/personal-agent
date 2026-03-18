@@ -122,9 +122,25 @@ class BaseAgent(ABC):
         """
         memory = memory or {}
 
-        # Build context string for Claude
-        context_str = json.dumps(context, indent=2, default=str)
-        memory_str = json.dumps(memory, indent=2, default=str) if memory else "None"
+        # Select model — Haiku for simple intents, Sonnet for complex ones
+        intent = context.get("intent", "")
+        _simple = {"routine", "shopping", "general_chat"}
+        model = "claude-haiku-4-5-20251001" if intent in _simple else "claude-sonnet-4-6"
+
+        # Build compact context — skip heavy fields to save tokens
+        compact_context = {
+            k: v for k, v in context.items()
+            if k not in ("conversation_history", "memory", "approved_plan")
+        }
+        context_str = json.dumps(compact_context, indent=2, default=str)[:2000]
+
+        # Inject dispatcher's approved plan as a hint so we don't start from scratch
+        approved_plan = context.get("approved_plan", [])
+        approved_hint = ""
+        if approved_plan:
+            approved_hint = "\nAPPROVED HIGH-LEVEL PLAN (follow this):\n" + "\n".join(
+                f"- {s}" for s in approved_plan
+            )
 
         planning_prompt = f"""
 You are an AI agent tasked with planning how to help the user.
@@ -136,9 +152,7 @@ USER REQUEST: {message}
 
 CURRENT CONTEXT:
 {context_str}
-
-MEMORY/PATTERNS:
-{memory_str}
+{approved_hint}
 
 Generate a detailed plan as a JSON array of steps. Each step should have:
 - step_number (int): Sequential step number
@@ -216,8 +230,8 @@ gmail.create_draft
 
         try:
             response = await self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=2000,
+                model=model,
+                max_tokens=600,
                 system=self.system_prompt,
                 messages=[{"role": "user", "content": planning_prompt}],
             )
@@ -395,8 +409,8 @@ Generate a brief, friendly summary (2-3 sentences) of what was accomplished and 
 
         try:
             response = await self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=500,
+                model="claude-haiku-4-5-20251001",
+                max_tokens=250,
                 system=self.system_prompt,
                 messages=[{"role": "user", "content": reflection_prompt}],
             )
