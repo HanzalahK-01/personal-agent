@@ -504,11 +504,25 @@ async def _call_todoist(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         return {"task": task}
 
     if method == "complete_task":
-        ok = await complete_task(params["task_id"])
+        task_id = params.get("task_id")
+        if not task_id:
+            match = params.get("task_match") or params.get("name") or params.get("content", "")
+            found = await find_task_by_name(match)
+            if not found:
+                return {"error": f"Task not found: {match}"}
+            task_id = found["id"]
+        ok = await complete_task(task_id)
         return {"success": ok}
 
     if method == "delete_task":
-        ok = await delete_task(params["task_id"])
+        task_id = params.get("task_id")
+        if not task_id:
+            match = params.get("task_match") or params.get("name") or params.get("content", "")
+            found = await find_task_by_name(match)
+            if not found:
+                return {"error": f"Task not found: {match}"}
+            task_id = found["id"]
+        ok = await delete_task(task_id)
         return {"success": ok}
 
     if method == "update_task":
