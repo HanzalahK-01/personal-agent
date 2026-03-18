@@ -1,0 +1,132 @@
+# Environment variables and secrets
+.env
+data/google-tokens.json
+data/google-credentials.json
+.env.local
+.env.*.local
+.secrets
+secrets.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+*.code-workspace
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Docker
+.docker/
+docker-compose.override.yml
+.dockerignore
+
+# Logs
+*.log
+logs/
+*.log.gz
+
+# Database backups
+*.sql
+*.sql.gz
+postgres_backup/
+
+# Redis dumps
+dump.rdb
+
+# Temporary files
+*.tmp
+.temp/
+temp/
+tmp/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+.directory
+.Trash-*
+
+# Node (if any frontend components)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Cache directories
+.cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pre-commit hooks
+.pre-commit-config.yaml.bak
+
+# Local configuration overrides
+config.local.yaml
+local_settings.py
+
+# OS files
+Thumbs.db
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Production build artifacts
+dist/
+build/
+*.egg-info/
+
+# Environment-specific files
+.envrc

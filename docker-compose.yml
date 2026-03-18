@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  bot:
+    build: .
+    container_name: personal_agent
+    env_file: .env
+    ports:
+      # Used during Google OAuth callback — /auth command starts a one-shot server here
+      - "3000:3000"
+    volumes:
+      # Persist Google OAuth tokens across container restarts
+      - ./data:/app/data
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

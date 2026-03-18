@@ -1,0 +1,24 @@
+# Core dependencies
+aiohttp==3.9.5
+httpx==0.27.0
+asyncpg==0.29.0
+google-auth==2.29.0
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.125.0
+python-telegram-bot==21.3
+anthropic>=0.50.0
+langgraph==0.2.75
+aioredis==2.0.1
+structlog==24.1.0
+pydantic==2.9.1
+pydantic-settings==2.3.4
+
+# Development
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+black==24.1.1
+isort==5.13.2
+flake8==7.0.0
+mypy==1.8.0

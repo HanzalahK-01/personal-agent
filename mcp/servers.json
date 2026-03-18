@@ -1,0 +1,38 @@
+{
+  "gcal": {
+    "command": "npx",
+    "args": ["-y", "@anthropic/mcp-server-google-calendar"],
+    "env": {
+      "GOOGLE_CREDENTIALS_PATH": "${GOOGLE_CREDENTIALS_PATH}"
+    }
+  },
+  "gmail": {
+    "command": "npx",
+    "args": ["-y", "@anthropic/mcp-server-gmail"],
+    "env": {
+      "GOOGLE_CREDENTIALS_PATH": "${GOOGLE_CREDENTIALS_PATH}"
+    }
+  },
+  "tavily": {
+    "command": "npx",
+    "args": ["-y", "tavily-mcp"],
+    "env": {
+      "TAVILY_API_KEY": "${TAVILY_API_KEY}"
+    }
+  },
+  "canva": {
+    "command": "npx",
+    "args": ["-y", "@anthropic/mcp-server-canva"],
+    "env": {
+      "CANVA_CLIENT_ID": "${CANVA_CLIENT_ID}",
+      "CANVA_CLIENT_SECRET": "${CANVA_CLIENT_SECRET}"
+    }
+  },
+  "memory": {
+    "command": "python",
+    "args": ["-m", "mcp.memory_server"],
+    "env": {
+      "DATABASE_URL": "${DATABASE_URL}"
+    }
+  }
+}
