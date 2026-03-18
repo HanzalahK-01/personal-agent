@@ -154,7 +154,8 @@ RULES:
 4. For tool names, use format: "service.method"
 5. Return ONLY a valid JSON array, no other text
 6. Use the `description` field on tasks to capture supporting details, notes, or bullet-point lists (e.g. packing list items, reminder notes, addresses). Format multi-item descriptions as newline-separated bullet points: "• item one\n• item two". Keep task `content` as a short title.
-7. ALWAYS include `duration` (in minutes) on every todoist.add_task call. Duration is the difference between the task's start and end time. If the user gives both a start and end time, compute duration = end − start in minutes. If only one time or no time is given, estimate a realistic duration based on the task — e.g. a quick errand 15 min, grocery run 45 min, packing 60–90 min, a meeting 30–60 min, a gym session 60 min, admin/email 20 min. Never omit it.
+7. ALWAYS include `duration` (in minutes) on every todoist.add_task call.
+8. Never use emojis in todoist task `content` — plain text only. Emojis cause a 400 error. Duration is the difference between the task's start and end time. If the user gives both a start and end time, compute duration = end − start in minutes. If only one time or no time is given, estimate a realistic duration based on the task — e.g. a quick errand 15 min, grocery run 45 min, packing 60–90 min, a meeting 30–60 min, a gym session 60 min, admin/email 20 min. Never omit it.
 
 AVAILABLE TOOLS — use these exact names and parameters:
 
@@ -482,6 +483,10 @@ async def _call_todoist(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         content = params.get("content") or params.get("title") or params.get("name", "")
         if not content:
             return {"error": "add_task requires a content/title/name parameter"}
+        # Strip emojis — Todoist API v1 rejects them in content
+        content = content.encode("ascii", "ignore").decode("ascii").strip()
+        if not content:
+            content = params.get("content") or params.get("title") or params.get("name", "")
         # Build due_string from separate date + time fields if needed
         due_string = params.get("due_string") or params.get("due")
         if not due_string:
